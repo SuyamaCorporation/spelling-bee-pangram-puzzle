@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelling Bee Pangram Puzzle</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .hex-btn {
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none; transition: filter 0.1s;
+  }
+  .hex-btn:hover { filter: brightness(0.9); }
+  .hex-btn:active { filter: brightness(0.75); }
+  .hex-center { background: #f6c542; }
+  .hex-outer { background: #e6e6e6; }
+  .hex-outer.dark { background: #888; }
+  .found-word.pangram { color: #b07a00; font-weight: bold; }
+  #progress-bar { transition: width 0.4s; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center py-6 px-2">
+<h1 class="text-3xl font-bold mb-1 text-gray-800">Spelling Bee</h1>
+<p class="text-gray-500 text-sm mb-4">Make words using the letters. Center letter required.</p>
+
+<!-- Puzzle selector -->
+<div class="flex gap-2 mb-4 flex-wrap justify-center">
+  <span class="text-sm text-gray-600 self-center">Puzzle:</span>
+  <div id="puzzle-btns" class="flex gap-2 flex-wrap justify-center"></div>
+</div>
+
+<!-- Score / rank -->
+<div class="w-full max-w-md mb-3">
+  <div class="flex justify-between text-sm mb-1">
+    <span id="rank-label" class="font-semibold text-yellow-600">Beginner</span>
+    <span id="score-display" class="font-bold text-gray-700">0 pts</span>
+  </div>
+  <div class="w-full bg-gray-200 rounded-full h-3">
+    <div id="progress-bar" class="bg-yellow-400 h-3 rounded-full" style="width:0%"></div>
+  </div>
+  <div class="flex justify-between text-xs text-gray-400 mt-0.5">
+    <span>Beginner</span><span>Genius</span>
+  </div>
+</div>
+
+<!-- Honeycomb -->
+<div id="honeycomb" class="relative mb-4" style="width:220px;height:220px;"></div>
+
+<!-- Input row -->
+<div class="flex items-center gap-2 mb-3">
+  <div id="input-display" class="border-b-2 border-yellow-400 min-w-[160px] text-center text-2xl font-semibold tracking-widest h-9 text-gray-800" aria-live="polite" aria-label="Current input"></div>
+</div>
+<div class="flex gap-3 mb-4">
+  <button id="btn-delete" class="px-4 py-2 rounded-full border border-gray-400 text-gray-700 font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400" aria-label="Delete last letter">Delete</button>
+  <button id="btn-shuffle" class="px-4 py-2 rounded-full border border-gray-400 text-gray-700 font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400" aria-label="Shuffle outer letters">Shuffle</button>
+  <button id="btn-enter" class="px-5 py-2 rounded-full bg-gray-800 text-white font-semibold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400" aria-label="Submit word">Enter</button>
+</div>
+
+<!-- Feedback -->
+<div id="feedback" class="h-6 text-sm font-semibold text-center mb-2"></div>
+
+<!-- Found words + reveal -->
+<div class="w-full max-w-md">
+  <div class="flex justify-between items-center mb-2">
+    <span id="found-count" class="text-sm text-gray-600">0 words found</span>
+    <button id="btn-reveal" class="text-xs text-blue-500 underline hover:text-blue-700 focus:outline-none" aria-label="Reveal all possible words">Reveal all</button>
+  </div>
+  <div id="found-words" class="flex flex-wrap gap-1 min-h-8"></div>
+  <div id="reveal-area" class="hidden mt-3">
+    <p class="text-xs text-gray-500 mb-1">All possible words:</p>
+    <div id="all-words" class="flex flex-wrap gap-1"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// Word list (500+ common English words)
+// ─────────────────────────────────────────────
+const WORD_LIST = `able acid acne acre acts adds ados aged ages aide aids aims airs airy akin aloe also alto amid amok amps ands anew ankh ante anti ants apes apex arch arcs area aria arid arks arms army arts asks asps aunt avid avow away awed awls awry axed axes axis aye bade bail bait bale balk ball balm band bane bang bank barn bare bark barn base bash bask bath bats beak beam bean beat beck beds beer bees belt bend best bets bias bide bids bile bill bind bird bite blot blow blue blur boar boat body bogs bold bolt bone book bore born bout bowl brag brat brew brim brow buck bud buff bulk bull bump bunk burl burn burp bury bush bust buys buzz cabs cafe cage cake call calm camp cane cape caps card care carp cart case cash cast cave cede cell chap char chef chew chin chip chop chub cite clad clam clap clay clip club clue coal coat code coil coin cola cold comb come cone cool cope cord core cork corn cost coup cozy crab crew crop crow cube cure curl curl cyst dace damp dank dare dark dart data date daub dawn days daze dead deaf deal dear debt deck deed deem deep deny desk dial diet dill dime dips dire dirt disc dish disk dive dock docs dole dome done door dose dove dowel drag dram draw drew drip drop drug drum dual duck duel dune dunk dupe dust duty each earl earn east edge egos else emit envy epic even evil exam face fact fade fail fain fair fake fall fame fans farm fast fate fawn fear feat feed feel feet fell felt fend fern fest film find fine fink firs fish fist flag flat flaw flax flea fled flew flex flit flog flop flew flux foam foil folk fond font food fool foot fore fork fort foul fray fret from frog fuel full fume fund furl fury fuse gabs gale game gang gaps gash gate gave gaze geld gems gild gist give glad glee glen glob glue gnat gnaw goal goer golf gone gore gown grab grab grad gray grew grid grin grip grit grub gulf gull gulp gust guts gyms hack hail hair hale half hall halt hams hand hang hare hark harm harp hash haste hate hats haul have hawk haze heed heel helm help herd here hero hewn hick hide high hill hilt hind hire hiss hoax hobs hock hold hole hone hood hook hoop hope horn hose host hour hove howl hull hump hung hunt hurt hymn icon idle inch info inks iris isle itch jabs jade jail jams jape jars jaws jest jibe jobs jogs join joke jolt jots jowl joys jump junk jury just keen keel keep kelp keys kiln kind king kite knit knob knot lace lack laid lain lake lamb lamp land lane lank laps lard lark lash last late laud lawn laws lays laze lead leaf lean leap left lens levy liar lice lick lieu lilt lime limp line link lion lire list lobe lock loft logo loin lone loop lore lorn lore loss lout lure lurk lust lute made mail main male mall malt mane many maps mare mark mart mask mast math maze mead meal mean meek meet melt memo mend mice mild mill mime mind mine mint mire mist mitt moat mock mode mold mole molt monk mood moor moos more moss most moth mote much mull musk mutt nail name nape nave navy near neck need nest nett newt next nine node noel norm nose note noun nude null nuns oboe odds ogre once only open opus oval oven oven owed owes pace pack page paid pail pain pair pale pall palm pare park part past pave pawn pays peak peal pear peat peel peer pelt perk pest pick pier pike pile pill pine pint pipe pits plan plod plop plot plow ploy plum plus pock pods poem pole poll polo pore port pose post pour pout prey prim prod prop pros pros puny pyre quay quit racy raid rail ramp rank rare rash rate rave rays real reap reel reef rely rent rest ribs rice rich rick ride rift ring rink riot rise risk rite road roam roar robe rods role roll roof rook root rope rose rote roue rout rove rued ruin rule rump rune ruse rush rust ruts saga sage said sail sake sale salt same sand sane sang sank sash save scam scan scar scot sect seed seek self sell sent serf sigh silk sill silo site size skew skip slap slew slim slip slob slop slot slow slum slur smug snap soar soak soak soap sock soil sole soma some song sore sort soup sown span spar spec spin spit spot spur stab star stem step stew stir stop stud sub such sued sulk sump sung sunk sure surf swam swan swat sway swig swim swum sync tack tall tame tang tank tape taps tare tarn taut team tear teem tell temp tend tent term test text than thaw thee then thew they thin this thor till tilt time tire toad toil tomb tone tong took tool tops torn toss tour town trap tray trek trim trip trod true tuck tuft tuna turf tusk tutu twin type ugly ulna undo unit unto upon urge used vain vale vane vary vats veil vein vent verb very vest vial vice vied view vile vine visa void volt wade wail wait wake wale walk wall wand wane ward warm warn warp wars wary wash wasm wats wave wavy weal wean weed weld well welt wend went were west when whim whip whir whom wick wigs wild wile will wilt wind wine wing wink wire wise wish wisp with woad woke wolf womb word wore worm worn wove wren writ yak yam yard yarn yawl yawn yore your yule zeal zero zest zinc zone zoom`.split(/\s+/).filter(w=>w.length>=4);
+
+const ALL_WORDS = [...new Set(WORD_LIST)];
+
+// Puzzles: {center, outer, pangram}
+const PUZZLES = [
+  { center:'e', outer:['a','r','t','l','p','s'], pangram:'plastered' },
+  { center:'i', outer:['n','g','h','t','s','l'], pangram:'nightly' },
+  { center:'a', outer:['m','k','e','r','b','l'], pangram:'remakers' },
+  { center:'o', outer:['c','r','s','e','d','n'], pangram:'cornered' },
+  { center:'u', outer:['n','t','r','e','o','s'], pangram:'contours' },
+];
+
+const RANKS = [
+  {name:'Beginner', pct:0},
+  {name:'Good Start', pct:5},
+  {name:'Moving Up', pct:12},
+  {name:'Good', pct:20},
+  {name:'Solid', pct:30},
+  {name:'Nice', pct:42},
+  {name:'Great', pct:57},
+  {name:'Amazing', pct:74},
+  {name:'Genius', pct:100},
+];
+
+let currentPuzzle = 0;
+let letters = [];
+let centerLetter = '';
+let outerLetters = [];
+let currentInput = '';
+let foundWords = [];
+let score = 0;
+let maxScore = 0;
+
+function getValidWords(center, all7) {
+  return ALL_WORDS.filter(w => {
+    if (!w.includes(center)) return false;
+    for (const c of w) { if (!all7.includes(c)) return false; }
+    return true;
+  });
+}
+
+function wordScore(word, all7) {
+  if (word.length === 4) return 1;
+  let s = word.length;
+  const letters7 = [...new Set(all7)];
+  const isPangram = letters7.every(c => word.includes(c));
+  if (isPangram) s += 7;
+  return s;
+}
+
+function buildHoneycomb() {
+  const hc = document.getElementById('honeycomb');
+  hc.innerHTML = '';
+  const size = 60;
+  const gap = 8;
+  // center at 110,110
+  // positions: center + 6 hex around
+  const cx = 110, cy = 108;
+  const radius = size + gap;
+  const angles = [270, 330, 30, 90, 150, 210].map(d => d * Math.PI / 180);
+  const positions = [
+    [cx, cy],
+    ...angles.map(a => [cx + radius * Math.cos(a), cy + radius * Math.sin(a)])
+  ];
+  const allLetters = [centerLetter, ...outerLetters];
+  positions.forEach(([x, y], i) => {
+    const btn = document.createElement('div');
+    btn.className = 'hex-btn absolute ' + (i === 0 ? 'hex-center' : 'hex-outer');
+    btn.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px;font-size:20px;font-weight:700;color:#333;`;
+    btn.textContent = allLetters[i].toUpperCase();
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('aria-label', 'Letter ' + allLetters[i].toUpperCase());
+    btn.addEventListener('click', () => addLetter(allLetters[i]));
+    hc.appendChild(btn);
+  });
+}
+
+function loadPuzzle(idx) {
+  currentPuzzle = idx;
+  const p = PUZZLES[idx];
+  centerLetter = p.center;
+  outerLetters = [...p.outer];
+  letters = [centerLetter, ...outerLetters];
+  currentInput = '';
+  foundWords = [];
+  score = 0;
+  const validWords = getValidWords(centerLetter, letters);
+  maxScore = validWords.reduce((s, w) => s + wordScore(w, letters), 0);
+  buildHoneycomb();
+  updateDisplay();
+  document.getElementById('reveal-area').classList.add('hidden');
+  document.getElementById('all-words').innerHTML = '';
+  document.getElementById('feedback').textContent = '';
+  highlightPuzzleBtn(idx);
+}
+
+function highlightPuzzleBtn(idx) {
+  document.querySelectorAll('#puzzle-btns button').forEach((b,i) => {
+    b.className = 'px-3 py-1 rounded-full text-sm font-medium border ' +
+      (i === idx ? 'bg-yellow-400 border-yellow-400 text-gray-900' : 'border-gray-300 text-gray-600 hover:bg-gray-100');
+  });
+}
+
+function addLetter(l) {
+  if (currentInput.length >= 20) return;
+  currentInput += l;
+  updateInput();
+}
+
+function updateInput() {
+  const el = document.getElementById('input-display');
+  el.textContent = '';
+  for (const c of currentInput) {
+    const span = document.createElement('span');
+    span.textContent = c.toUpperCase();
+    span.className = c === centerLetter ? 'text-yellow-500' : '';
+    el.appendChild(span);
+  }
+  if (!currentInput) {
+    const placeholder = document.createElement('span');
+    placeholder.textContent = '–';
+    placeholder.className = 'text-gray-300';
+    el.appendChild(placeholder);
+  }
+}
+
+function updateDisplay() {
+  updateInput();
+  const pct = maxScore > 0 ? Math.min((score / maxScore) * 100, 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('score-display').textContent = score + ' pts';
+  // rank
+  let rank = RANKS[0];
+  for (const r of RANKS) { if (pct >= r.pct) rank = r; }
+  document.getElementById('rank-label').textContent = rank.name;
+  // found words
+  document.getElementById('found-count').textContent = foundWords.length + ' word' + (foundWords.length !== 1 ? 's' : '') + ' found';
+  const fw = document.getElementById('found-words');
+  fw.innerHTML = '';
+  [...foundWords].sort().forEach(w => {
+    const span = document.createElement('span');
+    const isPangram = [...new Set(letters)].every(c => w.includes(c));
+    span.className = 'px-2 py-0.5 rounded text-sm ' + (isPangram ? 'bg-yellow-200 text-yellow-800 font-bold' : 'bg-gray-200 text-gray-700');
+    span.textContent = w;
+    fw.appendChild(span);
+  });
+}
+
+function showFeedback(msg, color='text-green-600') {
+  const el = document.getElementById('feedback');
+  el.className = 'h-6 text-sm font-semibold text-center mb-2 ' + color;
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = ''; }, 2000);
+}
+
+function submitWord() {
+  const w = currentInput.toLowerCase();
+  currentInput = '';
+  updateInput();
+  if (w.length < 4) { showFeedback('Too short!', 'text-red-500'); return; }
+  if (!w.includes(centerLetter)) { showFeedback('Missing center letter!', 'text-red-500'); return; }
+  for (const c of w) {
+    if (!letters.includes(c)) { showFeedback('Bad letter: ' + c.toUpperCase(), 'text-red-500'); return; }
+  }
+  if (foundWords.includes(w)) { showFeedback('Already found!', 'text-yellow-600'); return; }
+  if (!getValidWords(centerLetter, letters).includes(w)) { showFeedback('Not in word list', 'text-red-500'); return; }
+  foundWords.push(w);
+  const s = wordScore(w, letters);
+  score += s;
+  const isPangram = [...new Set(letters)].every(c => w.includes(c));
+  if (isPangram) showFeedback('PANGRAM! +' + s + ' pts', 'text-yellow-600');
+  else if (s === 1) showFeedback('Good! +1 pt', 'text-green-600');
+  else showFeedback('Nice! +' + s + ' pts', 'text-green-600');
+  updateDisplay();
+}
+
+function shuffleOuter() {
+  for (let i = outerLetters.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [outerLetters[i], outerLetters[j]] = [outerLetters[j], outerLetters[i]];
+  }
+  buildHoneycomb();
+}
+
+function revealAll() {
+  const validWords = getValidWords(centerLetter, letters);
+  const area = document.getElementById('reveal-area');
+  const container = document.getElementById('all-words');
+  container.innerHTML = '';
+  area.classList.remove('hidden');
+  [...validWords].sort().forEach(w => {
+    const span = document.createElement('span');
+    const isPangram = [...new Set(letters)].every(c => w.includes(c));
+    span.className = 'px-2 py-0.5 rounded text-xs ' +
+      (foundWords.includes(w) ? 'bg-green-200 text-green-800' :
+       isPangram ? 'bg-yellow-200 text-yellow-800 font-bold' : 'bg-gray-100 text-gray-600');
+    span.textContent = w;
+    container.appendChild(span);
+  });
+}
+
+// Init puzzle buttons
+const pbContainer = document.getElementById('puzzle-btns');
+PUZZLES.forEach((p, i) => {
+  const btn = document.createElement('button');
+  btn.textContent = 'Puzzle ' + (i + 1);
+  btn.className = 'px-3 py-1 rounded-full text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-100';
+  btn.addEventListener('click', () => loadPuzzle(i));
+  pbContainer.appendChild(btn);
+});
+
+document.getElementById('btn-delete').addEventListener('click', () => {
+  currentInput = currentInput.slice(0, -1);
+  updateInput();
+});
+document.getElementById('btn-shuffle').addEventListener('click', shuffleOuter);
+document.getElementById('btn-enter').addEventListener('click', submitWord);
+document.getElementById('btn-reveal').addEventListener('click', revealAll);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { submitWord(); return; }
+  if (e.key === 'Backspace') { currentInput = currentInput.slice(0, -1); updateInput(); return; }
+  const c = e.key.toLowerCase();
+  if (/^[a-z]$/.test(c) && letters.includes(c)) addLetter(c);
+});
+
+loadPuzzle(0);
+</script>
+</body>
+</html>
